@@ -1,9 +1,7 @@
 name: Daily AI Breakfast
 
-on:
+'on':
   schedule:
-    # GitHub Actions 的 cron 使用 UTC 时间。
-    # 北京时间 08:00 = UTC 00:00
     - cron: '0 0 * * *'
   workflow_dispatch:
 
