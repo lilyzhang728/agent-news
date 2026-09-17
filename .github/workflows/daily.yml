@@ -1,0 +1,64 @@
+name: Daily AI Breakfast
+
+on:
+  schedule:
+    # GitHub Actions 的 cron 使用 UTC 时间。
+    # 北京时间 08:00 = UTC 00:00
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run daily breakfast
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+        run: python daily_breakfast.py
+
+      - name: Upload markdown artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-breakfast-${{ github.run_id }}
+          path: output/*.md
+          if-no-files-found: warn
+
+      - name: Commit markdown to repo
+        if: success()
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/*.md
+          if git diff --cached --quiet; then
+            echo "No new markdown to commit"
+          else
+            git commit -m "chore: daily AI breakfast $(date +'%Y-%m-%d %H:%M')"
+            git push
+          fi
